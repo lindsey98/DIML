@@ -66,4 +66,5 @@ def Give(opt, datapath):
     eval_dataset.conversion        = test_conversion
     eval_train_dataset.conversion  = train_conversion
 
-    return {'training':train_dataset, 'validation':val_dataset, 'testing':test_dataset, 'evaluation':eval_dataset, 'evaluation_train':eval_train_dataset}
+    return {'training':train_dataset, 'validation':val_dataset, 'testing':test_dataset,
+            'evaluation':eval_dataset, 'evaluation_train':eval_train_dataset}

@@ -1,70 +1,89 @@
 import faiss, matplotlib.pyplot as plt, os, numpy as np, torch
 from PIL import Image
+import time
+from tqdm import tqdm
+from evaluation.normalized_mutual_information import calc_normalized_mutual_information, cluster_by_kmeans
+from evaluation.recall import calc_recall_at_k, assign_by_euclidian_at_k
+
+def predict_batchwise(model, dataloader):
+    '''
+        Predict on a batch
+        :return: list with N lists, where N = |{image, label, index}|
+    '''
+    # print(list(model.parameters())[0].device)
+    model_is_training = model.training
+    model.eval()
+    ds = dataloader.dataset
+    A = [[] for i in range(len(ds[0]))]
+    with torch.no_grad():
+        # extract batches (A becomes list of samples)
+        for batch in tqdm(dataloader, desc="Batch-wise prediction"):
+            for i, J in enumerate(batch):
+                # i = 0: sz_batch * images
+                # i = 1: sz_batch * labels
+                # i = 2: sz_batch * indices
+                if i == 0:
+                    # move images to device of model (approximate device)
+                    J = J.to(list(model.parameters())[0].device)
+                    # predict model output for image
+                    J = model(J).cpu()
+                for j in J:
+                    #if i == 1: print(j)
+                    A[i].append(j)
+    model.train()
+    model.train(model_is_training) # revert to previous training state
+    return [torch.stack(A[i]) for i in range(len(A))]
 
 
+def evaluate(model, dataloader, eval_nmi=True, recall_list=[1, 2, 4, 8]):
+    '''
+        Evaluation on dataloader
+        :param model: embedding model
+        :param dataloader: dataloader
+        :param eval_nmi: evaluate NMI (Mutual information between clustering on embedding and the gt class labels) or not
+        :param recall_list: recall@K
+    '''
+    eval_time = time.time()
+    nb_classes = dataloader.dataset.nb_classes()
 
-#######################
-def evaluate(dataset, LOG, metric_computer, dataloaders, model, opt, evaltypes, device,
-             aux_store=None, make_recall_plot=False, store_checkpoints=True, log_key='Test'):
-    """
-    Parent-Function to compute evaluation metrics, print summary string and store checkpoint files/plot sample recall plots.
-    """
-    computed_metrics, extra_infos = metric_computer.compute_standard(opt, model, dataloaders[0], evaltypes, device)
+    # calculate embeddings with model and get targets
+    X, T, *_ = predict_batchwise(model, dataloader)
 
-    numeric_metrics = {}
-    histogr_metrics = {}
-    for main_key in computed_metrics.keys():
-        for name,value in computed_metrics[main_key].items():
-            if isinstance(value, np.ndarray):
-                if main_key not in histogr_metrics: histogr_metrics[main_key] = {}
-                histogr_metrics[main_key][name] = value
-            else:
-                if main_key not in numeric_metrics: numeric_metrics[main_key] = {}
-                numeric_metrics[main_key][name] = value
+    print('done collecting prediction')
 
-    ###
-    full_result_str = ''
-    for evaltype in numeric_metrics.keys():
-        full_result_str += 'Embed-Type: {}:\n'.format(evaltype)
-        for i,(metricname, metricval) in enumerate(numeric_metrics[evaltype].items()):
-            full_result_str += '{0}{1}: {2:4.4f}'.format(' | ' if i>0 else '',metricname, metricval)
-        full_result_str += '\n'
+    if eval_nmi:
+        # calculate NMI with kmeans clustering
+        nmi = calc_normalized_mutual_information(
+            T,
+            cluster_by_kmeans(
+                X, nb_classes
+            )
+        )
+    else:
+        nmi = 1
 
-    print(full_result_str)
+    print("NMI: {:.3f}".format(nmi * 100))
 
+    # get predictions by assigning nearest 8 neighbors with euclidian
+    max_dist = max(recall_list)
+    Y = assign_by_euclidian_at_k(X, T, max_dist)
+    Y = torch.from_numpy(Y)
 
-    ###
-    for evaltype in evaltypes:
-        for storage_metric in opt.storage_metrics:
-            parent_metric = evaltype+'_{}'.format(storage_metric.split('@')[0])
-            if parent_metric not in LOG.progress_saver[log_key].groups.keys() or \
-               numeric_metrics[evaltype][storage_metric]>np.max(LOG.progress_saver[log_key].groups[parent_metric][storage_metric]['content']):
-               print('Saved weights for best {}: {}\n'.format(log_key, parent_metric))
-               set_checkpoint(model, opt, LOG.progress_saver, LOG.prop.save_path+'/checkpoint_{}_{}_{}.pth.tar'.format(log_key, evaltype, storage_metric), aux=aux_store)
+    # calculate recall @ 1, 2, 4, 8
+    recall = []
+    for k in recall_list:
+        r_at_k = calc_recall_at_k(T, Y, k)
+        recall.append(r_at_k)
+        print("R@{} : {:.3f}".format(k, 100 * r_at_k))
 
+    chmean = (2 * nmi * recall[0]) / (nmi + recall[0])
+    print("hmean: %s", str(chmean))
 
-    ###
-    if opt.log_online:
-        for evaltype in histogr_metrics.keys():
-            for eval_metric, hist in histogr_metrics[evaltype].items():
-                import wandb, numpy
-                wandb.log({log_key+': '+evaltype+'_{}'.format(eval_metric): wandb.Histogram(np_histogram=(list(hist),list(np.arange(len(hist)+1))))}, step=opt.epoch)
-                wandb.log({log_key+': '+evaltype+'_LOG-{}'.format(eval_metric): wandb.Histogram(np_histogram=(list(np.log(hist)+20),list(np.arange(len(hist)+1))))}, step=opt.epoch)
-
-    ###
-    for evaltype in numeric_metrics.keys():
-        for eval_metric in numeric_metrics[evaltype].keys():
-            parent_metric = evaltype+'_{}'.format(eval_metric.split('@')[0])
-            LOG.progress_saver[log_key].log(eval_metric, numeric_metrics[evaltype][eval_metric],  group=parent_metric)
-
-        ###
-        if make_recall_plot:
-            recover_closest_standard(extra_infos[evaltype]['features'],
-                                     extra_infos[evaltype]['image_paths'],
-                                     LOG.prop.save_path+'/sample_recoveries.png')
+    eval_time = time.time() - eval_time
+    print('Eval time: %.2f' % eval_time)
+    return nmi, recall
 
 
-###########################
 def set_checkpoint(model, opt, progress_saver, savepath, aux=None):
     if 'experiment' in vars(opt):
         import argparse
