@@ -273,9 +273,8 @@ for epoch in range(start_epoch, opt.n_epochs):
     print('###########')
     # print('Now rank-1 acc=%f, RP=%f, MAP@R=%f' % (overall_r1, overall_rp, overall_mapr))
     # print('Best rank-1 acc=%f, RP=%f, MAP@R=%f' % (best_r1,  best_rp, best_mapr))
-
-    print('Now Recall@1,2,4,8 : {:.3f}, {:.3f}, {:.3f}, {:.3f}'.format(100*recall[1],100*recall[2],100*recall[4],100*recall[8] ))
-    print('Best Recall@1,2,4,8 : {:.3f}, {:.3f}, {:.3f}, {:.3f}'.format(100*best_recalls[1],100*best_recalls[2],100*best_recalls[4],100*best_recalls[8] ))
+    # print('Now Recall@1,2,4,8 : {:.3f}, {:.3f}, {:.3f}, {:.3f}'.format(100*recall[1],100*recall[2],100*recall[4],100*recall[8] ))
+    # print('Best Recall@1,2,4,8 : {:.3f}, {:.3f}, {:.3f}, {:.3f}'.format(100*best_recalls[1],100*best_recalls[2],100*best_recalls[4],100*best_recalls[8] ))
 
     ### Learning Rate Scheduling Step
     if opt.scheduler != 'none':

@@ -41,10 +41,10 @@ The results will be written to `test_results/test_diml_<dataset>.csv` in CSV for
 
 You can also incorporate DIML into the training objectives. We provide two examples which apply DIML to  Margin and Multi-Similarity loss. To train DIML models, run
 ```bash
-# ./scripts/diml/train_diml.sh <dataset> <batch_size> <loss> <num_epochs>
+# ./scripts/diml/train_diml_cub.sh <dataset> <batch_size> <loss> <num_epochs>
 # where loss could be margin_diml or multisimilarity_diml
 # e.g.
-CUDA_VISIBLE_DEVICES=0 ./scripts/diml/train_diml.sh cub200 112 margin_diml 150
+CUDA_VISIBLE_DEVICES=0 ./scripts/diml/train_diml_cub.sh cub200 112 margin_diml 150
 ```
 
 ## Acknowledgement

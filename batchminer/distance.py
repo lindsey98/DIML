@@ -28,8 +28,10 @@ class BatchMiner():
         tar_labels = labels if tar_labels is None else tar_labels
 
         for i in range(bs):
-            neg = tar_labels!=labels[i]; pos = tar_labels==labels[i]
+            neg = tar_labels!=labels[i]
+            pos = tar_labels==labels[i]
 
+            # Sample negatives by distance
             anchors.append(i)
             q_d_inv = self.inverse_sphere_distances(dim, bs, distances[i], tar_labels, labels[i])
             negatives.append(np.random.choice(sel_d,p=q_d_inv))
@@ -38,7 +40,7 @@ class BatchMiner():
                 #Sample positives randomly
                 if np.sum(pos)>1: pos[i] = 0
                 positives.append(np.random.choice(np.where(pos)[0]))
-                #Sample negatives by distance
+
 
         sampled_triplets = [[a,p,n] for a,p,n in zip(anchors, positives, negatives)]
 
