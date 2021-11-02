@@ -7,8 +7,19 @@
                 "trainval":"range(0,100)",
                 "eval": "range(100, 200)"
             },
-            "source": "str('mnt/datasets/CUB_200_2011')",
-            "root":"str('mnt/datasets/CUB_200_2011')"
+            "source": "str('/home/ruofan/PycharmProjects/ProxyNCA-/mnt/datasets/CUB_200_2011')",
+            "root":"str('/home/ruofan/PycharmProjects/ProxyNCA-/mnt/datasets/CUB_200_2011')"
+
+        },
+        "cub200": {
+            "classes": {
+                "train": "range(0, 50)",
+                "val": "range(50,100)",
+                "trainval":"range(0,100)",
+                "eval": "range(100, 200)"
+            },
+            "source": "str('/home/ruofan/PycharmProjects/ProxyNCA-/mnt/datasets/CUB_200_2011')",
+            "root":"str('/home/ruofan/PycharmProjects/ProxyNCA-/mnt/datasets/CUB_200_2011')"
 
         },
         "cub_h5": {
@@ -18,8 +29,8 @@
                 "trainval":"range(0,100)",
                 "eval": "range(100, 200)"
             },
-            "source": "str('./mnt/datasets/CUB_200_2011/cub.h5')",
-            "root":"str('./mnt/datasets/CUB_200_2011/cub.h5')"
+            "source": "str('/home/ruofan/PycharmProjects/ProxyNCA-/mnt/datasets/CUB_200_2011/cub.h5')",
+            "root":"str('/home/ruofan/PycharmProjects/ProxyNCA-/mnt/datasets/CUB_200_2011/cub.h5')"
         },
         "cars": {
             "classes": {
@@ -28,8 +39,19 @@
                 "trainval": "range(0, 98)",
                 "eval": "range(98, 196)"
             },
-            "source": "str('mnt/datasets/CARS_196')",
-            "root": "str('mnt/datasets/CARS_196')"
+            "source": "str('/home/ruofan/PycharmProjects/ProxyNCA-/mnt/datasets/CARS_196')",
+            "root": "str('/home/ruofan/PycharmProjects/ProxyNCA-/mnt/datasets/CARS_196')"
+
+        },
+        "cars196": {
+            "classes": {
+                "train": "range(0, 49)",
+                "val": "range(49,98)",
+                "trainval": "range(0, 98)",
+                "eval": "range(98, 196)"
+            },
+            "source": "str('/home/ruofan/PycharmProjects/ProxyNCA-/mnt/datasets/CARS_196')",
+            "root": "str('/home/ruofan/PycharmProjects/ProxyNCA-/mnt/datasets/CARS_196')"
 
         },
         "vgg": {
@@ -101,8 +123,8 @@
                 "trainval": "range(0, 1171)",
                 "eval": "range(1171, 2340)"
             },
-            "source": "str('mnt/datasets/logo2k')",
-            "root":"str('mnt/datasets/logo2k')"
+            "source": "str('/home/ruofan/PycharmProjects/ProxyNCA-/mnt/datasets/logo2k')",
+            "root":"str('/home/ruofan/PycharmProjects/ProxyNCA-/mnt/datasets/logo2k')"
 
         },
         "logo2k_super100": {

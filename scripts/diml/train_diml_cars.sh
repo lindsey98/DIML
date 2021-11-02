@@ -1,4 +1,4 @@
-dataset=${1:-cub200}
+dataset=${1:-cars196}
 bs=${2:-32}
 loss=${3:-margin_diml}
 epochs=${4:-50}

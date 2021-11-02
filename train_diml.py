@@ -1,7 +1,7 @@
 """==================================================================================================="""
 ################### LIBRARIES ###################
 ### Basic Libraries
-import comet_ml
+# import comet_ml
 import warnings
 warnings.filterwarnings("ignore")
 
@@ -83,29 +83,12 @@ if opt.fc_lr < 0:
 else:
     all_but_fc_params = [x[-1] for x in list(filter(lambda x: 'last_linear' not in x[0], model.named_parameters()))]
     fc_params = model.model.last_linear.parameters()
-    to_optim  = [{'params':all_but_fc_params,'lr':opt.lr,'weight_decay':opt.decay},
-                 {'params':fc_params,'lr':opt.fc_lr,'weight_decay':opt.decay}]
+    to_optim  = [{'params': all_but_fc_params, 'lr':opt.lr, 'weight_decay':opt.decay},
+                 {'params': fc_params, 'lr':opt.fc_lr, 'weight_decay':opt.decay}]
 
 _  = model.to(opt.device)
 
 """============================================================================"""
-#################### DATALOADER SETUPS ##################
-# dataloaders = {}
-# datasets    = datasets.select(opt.dataset, opt, opt.source_path)
-#
-# dataloaders['evaluation'] = torch.utils.data.DataLoader(datasets['evaluation'], num_workers=opt.kernels, batch_size=opt.bs, shuffle=False)
-# dataloaders['testing']  = torch.utils.data.DataLoader(datasets['testing'],    num_workers=opt.kernels, batch_size=200, shuffle=False)
-# if opt.use_tv_split:
-#     dataloaders['validation'] = torch.utils.data.DataLoader(datasets['validation'], num_workers=opt.kernels, batch_size=opt.bs,shuffle=False)
-#
-# train_data_sampler      = dsamplers.select(opt.data_sampler, opt, datasets['training'].image_dict, datasets['training'].image_list)
-# if train_data_sampler.requires_storage:
-#     train_data_sampler.create_storage(dataloaders['evaluation'], model, opt.device)
-#
-# dataloaders['training'] = torch.utils.data.DataLoader(datasets['training'], num_workers=opt.kernels, batch_sampler=train_data_sampler)
-#
-# opt.n_classes  = len(dataloaders['training'].dataset.avail_classes)
-
 dataset_config = utils.load_config('dataset/config.json')
 transform_key = 'transform_parameters'
 train_transform = dataset.utils.make_transform(
@@ -120,13 +103,13 @@ tr_dataset = dataset.load(
     transform=train_transform
 )
 
-batch_sampler = dataset.utils.BalancedBatchSampler(torch.Tensor(tr_dataset.ys), opt.IPC,
-                                                   int(opt.bs / opt.IPC))
+batch_sampler = dataset.utils.BalancedBatchSampler(torch.Tensor(tr_dataset.ys), 8,
+                                                   int(opt.bs / 8))
 
 dl_tr = torch.utils.data.DataLoader(
     tr_dataset,
     batch_sampler=batch_sampler,
-    num_workers=opt.nb_workers,
+    num_workers=16,
 )
 
 dl_ev = torch.utils.data.DataLoader(
@@ -142,9 +125,13 @@ dl_ev = torch.utils.data.DataLoader(
     ),
     batch_size=opt.bs,
     shuffle=False,
-    num_workers=opt.nb_workers,
+    num_workers=16,
     # pin_memory = True
 )
+opt.n_classes  = dl_tr.dataset.nb_classes()
+print(opt.n_classes)
+print(len(dl_tr.dataset))
+print(len(dl_ev.dataset))
 
 """============================================================================"""
 #################### CREATE LOGGING FILES ###############
@@ -171,15 +158,7 @@ scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer, milestones=opt.tau, 
 """============================================================================"""
 #################### METRIC COMPUTER ####################
 opt.rho_spectrum_embed_dim = opt.embed_dim
-
-"""============================================================================"""
-################### Summary #########################3
-data_text  = 'Dataset:\t {}'.format(opt.dataset.upper())
-setup_text = 'Objective:\t {}'.format(opt.loss.upper())
-miner_text = 'Batchminer:\t {}'.format(opt.batch_mining if criterion.REQUIRES_BATCHMINER else 'N/A')
-arch_text  = 'Backbone:\t {} (#weights: {})'.format(opt.arch.upper(), misc.gimme_params(model))
-summary    = data_text+'\n'+setup_text+'\n'+miner_text+'\n'+arch_text
-print(summary)
+print(opt)
 
 """============================================================================"""
 ################### SCRIPT MAIN ##########################
@@ -215,9 +194,9 @@ for epoch in range(start_epoch, opt.n_epochs):
     data_iterator = tqdm(dl_tr, desc='Epoch {} Training...'.format(epoch))
 
     print(opt.save_path)
-
-    for i,out in enumerate(data_iterator):
-        class_labels, input, input_indices = out
+    nmi, recall = eval.evaluate(model, dl_ev)
+    for i, out in enumerate(data_iterator):
+        input, class_labels, input_indices = out
 
         ### Compute Embedding
         input      = input.to(opt.device)
@@ -232,7 +211,7 @@ for epoch in range(start_epoch, opt.n_epochs):
         loss_args['labels']         = class_labels
         # loss_args['f_embed']        = model.module.model.last_linear
         loss_args['batch_features'] = features
-        loss      = criterion(**loss_args)
+        loss = criterion(**loss_args)
 
         optimizer.zero_grad()
 
@@ -281,8 +260,8 @@ for epoch in range(start_epoch, opt.n_epochs):
     all_metrics = recall
     best_metrics = best_recalls
 
-    for k, v in all_metrics.items():
-        LOG.progress_saver['Test'].log(k, v)
+    # for k, v in all_metrics:
+    #     LOG.progress_saver['Test'].log(k, v)
 
     print('saving checkpoint...')
     misc.save_checkpoint(model, optimizer, os.path.join(opt.save_path, 'latest.pth'),
@@ -304,18 +283,3 @@ for epoch in range(start_epoch, opt.n_epochs):
 
     print('Total Epoch Runtime: {0:4.2f}s'.format(time.time()-epoch_start_time))
     print('\n-----\n')
-
-
-"""======================================================="""
-### CREATE A SUMMARY TEXT FILE
-# summary_text = ''
-# full_training_time = time.time()-full_training_start_time
-# summary_text += 'Training Time: {} min.\n'.format(np.round(full_training_time/60,2))
-#
-# summary_text += '---------------\n'
-# for sub_logger in LOG.sub_loggers:
-#     metrics       = LOG.graph_writer[sub_logger].ov_title
-#     summary_text += '{} metrics: {}\n'.format(sub_logger.upper(), metrics)
-#
-# with open(opt.save_path+'/training_summary.txt','w') as summary_file:
-#     summary_file.write(summary_text)

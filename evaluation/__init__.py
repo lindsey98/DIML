@@ -26,7 +26,8 @@ def predict_batchwise(model, dataloader):
                     # move images to device of model (approximate device)
                     J = J.to(list(model.parameters())[0].device)
                     # predict model output for image
-                    J = model(J).cpu()
+                    _, (J, _) = model(J)
+                    J = J.cpu()
                 for j in J:
                     #if i == 1: print(j)
                     A[i].append(j)

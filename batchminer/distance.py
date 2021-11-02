@@ -17,7 +17,7 @@ class BatchMiner():
         if distances is None:
             distances = self.pdist(batch.detach()).clamp(min=self.lower_cutoff)
 
-        dim = 128
+        dim = 512
         bs = distances.size(0)
         sel_d = distances.shape[-1]
 
